@@ -4,9 +4,9 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "build": "npx --yes vite@6.3.5 build",
-    "dev": "npx --yes vite@6.3.5",
-    "preview": "npx --yes vite@6.3.5 preview"
+    "build": "node build.js",
+    "dev": "vite",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "1.2.3",
