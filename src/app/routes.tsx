@@ -12,6 +12,7 @@ import { Budgets } from '@/app/pages/Budgets';
 import { Calendar } from '@/app/pages/Calendar';
 import { Analysis } from '@/app/pages/Analysis';
 import { Settings } from '@/app/pages/Settings';
+import { Debug } from '@/app/pages/Debug';
 
 // Componente wrapper para proteger rutas
 function ProtectedRoute() {
@@ -59,6 +60,10 @@ export const router = createBrowserRouter([
       { path: '/login', element: <Login /> },
       { path: '/register', element: <Register /> },
     ],
+  },
+  {
+    path: '/debug',
+    element: <Debug />,
   },
   {
     element: <ProtectedRoute />,
