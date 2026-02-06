@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { useFirebaseAuth } from '@/hooks/useFirebaseAuth';
+import { auth } from '@/lib/firebase';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Alert, AlertDescription } from '@/app/components/ui/alert';
-import { Loader2, Mail, Lock } from 'lucide-react';
+import { Loader2, Mail, Lock, AlertTriangle } from 'lucide-react';
 
 export function Login() {
   const navigate = useNavigate();
@@ -16,10 +17,16 @@ export function Login() {
     email: '',
     password: '',
   });
+  const [showDebug, setShowDebug] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
+    
+    console.log('=== DEBUG INFO ===');
+    console.log('Auth initialized:', !!auth);
+    console.log('Current URL:', window.location.href);
+    console.log('Hostname:', window.location.hostname);
     
     const result = await signIn(formData.email, formData.password);
     
@@ -43,7 +50,10 @@ export function Login() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <Alert className="bg-red-950/50 border-red-800">
-                <AlertDescription className="text-red-200">{error}</AlertDescription>
+                <AlertTriangle className="w-4 h-4 text-red-400" />
+                <AlertDescription className="text-red-200 whitespace-pre-line">
+                  {error}
+                </AlertDescription>
               </Alert>
             )}
 
@@ -100,6 +110,25 @@ export function Login() {
             <Link to="/register" className="text-blue-400 hover:text-blue-300 font-medium">
               Regístrate aquí
             </Link>
+          </div>
+
+          {/* Debug info */}
+          <div className="mt-4 pt-4 border-t border-zinc-800">
+            <button
+              type="button"
+              onClick={() => setShowDebug(!showDebug)}
+              className="text-xs text-zinc-600 hover:text-zinc-400"
+            >
+              {showDebug ? 'Ocultar' : 'Mostrar'} información de debug
+            </button>
+            
+            {showDebug && (
+              <div className="mt-2 p-3 bg-zinc-950 rounded text-xs text-zinc-500 font-mono">
+                <p>Auth: {auth ? 'Inicializado' : 'No inicializado'}</p>
+                <p>URL: {window.location.hostname}</p>
+                <p>Domain: {window.location.origin}</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
