@@ -97,7 +97,7 @@ export function useFirebaseAuth() {
     } catch (err) {
       console.error('Error en registro:', err);
       const authError = err as AuthError;
-      const errorMsg = getErrorMessage(authError.code);
+      const errorMsg = getErrorMessage(authError.code, err);
       setError(errorMsg);
       return { success: false, error: errorMsg };
     }
@@ -116,7 +116,7 @@ export function useFirebaseAuth() {
     } catch (err) {
       console.error('Error en login:', err);
       const authError = err as AuthError;
-      const errorMsg = getErrorMessage(authError.code);
+      const errorMsg = getErrorMessage(authError.code, err);
       setError(errorMsg);
       return { success: false, error: errorMsg };
     }
@@ -152,19 +152,28 @@ export function useFirebaseAuth() {
 }
 
 // Traducir códigos de error de Firebase
-function getErrorMessage(code: string): string {
+function getErrorMessage(code: string, rawError?: any): string {
+  // Error específico de red
+  if (rawError?.message?.includes('fetch') || rawError?.message?.includes('network')) {
+    return 'Error de conexión. Posibles causas:\n' +
+           '1. El dominio no está autorizado en Firebase\n' +
+           '2. Authentication no está habilitado en Firebase Console\n' +
+           '3. Problema de red/ internet';
+  }
+  
   const errorMessages: Record<string, string> = {
     'auth/email-already-in-use': 'Este correo ya está registrado',
     'auth/invalid-email': 'Correo electrónico inválido',
-    'auth/operation-not-allowed': 'Operación no permitida. Verifica Firebase Console.',
+    'auth/operation-not-allowed': 'Operación no permitida. IMPORTANTE: Ve a Firebase Console > Authentication > Sign-in method y habilita "Correo electrónico/Contraseña"',
     'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres',
     'auth/user-disabled': 'Esta cuenta ha sido deshabilitada',
     'auth/user-not-found': 'No existe una cuenta con este correo',
     'auth/wrong-password': 'Contraseña incorrecta',
     'auth/too-many-requests': 'Demasiados intentos. Intenta más tarde',
-    'auth/network-request-failed': 'Error de conexión. Verifica tu internet o si Firebase está habilitado.',
+    'auth/network-request-failed': 'Error de conexión con Firebase. VERIFICA:\n1. Ve a Firebase Console > Authentication > Sign-in method\n2. Habilita "Correo electrónico/Contraseña"\n3. En Settings > Authorized domains, agrega: finanzas-personales1.vercel.app',
     'auth/invalid-credential': 'Credenciales inválidas',
+    'auth/unauthorized-domain': 'Dominio no autorizado. Agrega tu dominio de Vercel en Firebase Console > Authentication > Settings > Authorized domains',
   };
   
-  return errorMessages[code] || `Error: ${code}`;
+  return errorMessages[code] || `Error: ${code}. Mensaje: ${rawError?.message || 'Desconocido'}`;
 }

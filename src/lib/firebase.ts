@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
+import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 
 // Configuración de Firebase - app-finperson
 const firebaseConfig = {
@@ -19,7 +19,16 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 
-// Configurar persistencia
-auth.useDeviceLanguage();
+// Configurar persistencia para que no cierre sesión al recargar
+setPersistence(auth, browserLocalPersistence).catch(console.error);
+
+// Habilitar persistencia offline para Firestore
+enableIndexedDbPersistence(db).catch((err) => {
+  if (err.code === 'failed-precondition') {
+    console.warn('Persistencia offline no disponible');
+  }
+});
+
+console.log('Firebase inicializado:', app.name);
 
 export default app;
