@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { useFirebaseAuth } from '@/hooks/useFirebaseAuth';
-import { auth } from '@/lib/firebase';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
@@ -13,22 +12,14 @@ export function Login() {
   const navigate = useNavigate();
   const { signIn, loading, error, clearError } = useFirebaseAuth();
   
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
-  const [showDebug, setShowDebug] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
     
-    console.log('=== DEBUG INFO ===');
-    console.log('Auth initialized:', !!auth);
-    console.log('Current URL:', window.location.href);
-    console.log('Hostname:', window.location.hostname);
-    
-    const result = await signIn(formData.email, formData.password);
+    const result = await signIn(email, password);
     
     if (result.success) {
       navigate('/dashboard');
@@ -51,7 +42,7 @@ export function Login() {
             {error && (
               <Alert className="bg-red-950/50 border-red-800">
                 <AlertTriangle className="w-4 h-4 text-red-400" />
-                <AlertDescription className="text-red-200 whitespace-pre-line">
+                <AlertDescription className="text-red-200 text-sm">
                   {error}
                 </AlertDescription>
               </Alert>
@@ -65,8 +56,8 @@ export function Login() {
                   id="email"
                   type="email"
                   placeholder="tu@email.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="bg-zinc-800 border-zinc-700 pl-10 text-zinc-100"
                   required
                 />
@@ -81,8 +72,8 @@ export function Login() {
                   id="password"
                   type="password"
                   placeholder="••••••••"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="bg-zinc-800 border-zinc-700 pl-10 text-zinc-100"
                   required
                 />
@@ -110,25 +101,6 @@ export function Login() {
             <Link to="/register" className="text-blue-400 hover:text-blue-300 font-medium">
               Regístrate aquí
             </Link>
-          </div>
-
-          {/* Debug info */}
-          <div className="mt-4 pt-4 border-t border-zinc-800">
-            <button
-              type="button"
-              onClick={() => setShowDebug(!showDebug)}
-              className="text-xs text-zinc-600 hover:text-zinc-400"
-            >
-              {showDebug ? 'Ocultar' : 'Mostrar'} información de debug
-            </button>
-            
-            {showDebug && (
-              <div className="mt-2 p-3 bg-zinc-950 rounded text-xs text-zinc-500 font-mono">
-                <p>Auth: {auth ? 'Inicializado' : 'No inicializado'}</p>
-                <p>URL: {window.location.hostname}</p>
-                <p>Domain: {window.location.origin}</p>
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>
