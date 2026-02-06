@@ -1,0 +1,6 @@
+{
+  "settings": {
+    "nodeVersion": "20.x",
+    "packageManager": "npm"
+  }
+}
