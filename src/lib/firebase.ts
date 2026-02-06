@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
 
 // Configuración de Firebase - app-finperson
 const firebaseConfig = {
@@ -18,4 +18,8 @@ const app = initializeApp(firebaseConfig);
 // Exportar servicios
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+
+// Configurar persistencia
+auth.useDeviceLanguage();
+
 export default app;
