@@ -1,9 +1,9 @@
 {
   "version": 2,
-  "framework": "vite",
-  "buildCommand": "npm install && npm run build",
+  "framework": null,
+  "installCommand": "npm ci --prefer-offline --no-audit",
+  "buildCommand": "npm exec -- vite build",
   "outputDirectory": "dist",
-  "installCommand": "npm install --legacy-peer-deps",
   "rewrites": [
     {
       "source": "/(.*)",
