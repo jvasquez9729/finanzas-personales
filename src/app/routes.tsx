@@ -1,7 +1,7 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router';
 import { useFirebaseAuth } from '@/hooks/useFirebaseAuth';
 import { Layout } from '@/app/components/layout/Layout';
-import { Landing } from '@/app/pages/Landing';
+import { Landing } from '@/app/pages/LandingNew';
 import { Login } from '@/app/pages/Login';
 import { Register } from '@/app/pages/Register';
 import { Dashboard } from '@/app/pages/Dashboard';

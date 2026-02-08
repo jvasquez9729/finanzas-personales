@@ -6,6 +6,6 @@ export { Budgets } from './Budgets';
 export { Calendar } from './Calendar';
 export { Analysis } from './Analysis';
 export { Settings } from './Settings';
-export { Landing } from './Landing';
+export { Landing } from './LandingNew';
 export { Login } from './Login';
 export { Register } from './Register';
