@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { auth, db } from '@/lib/firebase';
+import { signInAnonymously } from 'firebase/auth';
+import { collection, getDocs } from 'firebase/firestore';
 import {
   Wallet,
   TrendingUp,
@@ -16,6 +19,73 @@ import {
   Loader2,
   CheckCircle2,
 } from 'lucide-react';
+
+// Componente de Debug inline
+function FirebaseDebug() {
+  const [logs, setLogs] = useState<string[]>([]);
+  const [testing, setTesting] = useState(false);
+
+  const addLog = (msg: string) => {
+    setLogs(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
+  };
+
+  const testConnection = async () => {
+    setTesting(true);
+    setLogs([]);
+    addLog('=== INICIANDO DIAGNÓSTICO ===');
+    addLog(`URL: ${window.location.href}`);
+    addLog(`Hostname: ${window.location.hostname}`);
+    addLog(`Auth inicializado: ${!!auth}`);
+
+    try {
+      // Test 1: Conexión anónima
+      addLog('Probando Auth...');
+      await signInAnonymously(auth);
+      addLog('✅ Auth funciona!');
+
+      // Test 2: Firestore
+      addLog('Probando Firestore...');
+      const testRef = collection(db, '_test_');
+      await getDocs(testRef);
+      addLog('✅ Firestore funciona!');
+
+      addLog('=== TODO OK ===');
+    } catch (err: any) {
+      addLog(`❌ ERROR: ${err.code}`);
+      addLog(`Mensaje: ${err.message}`);
+      
+      if (err.code === 'auth/operation-not-allowed') {
+        addLog('💡 SOLUCIÓN: Ve a Firebase Console > Authentication > Sign-in method y habilita "Anonymous"');
+      }
+      if (err.code === 'auth/network-request-failed') {
+        addLog('💡 SOLUCIÓN: Verifica que el dominio esté agregado en Firebase Console > Authentication > Settings > Authorized domains');
+      }
+    }
+    setTesting(false);
+  };
+
+  return (
+    <div className="bg-zinc-900 p-4 rounded-lg">
+      <Button 
+        onClick={testConnection}
+        disabled={testing}
+        className="mb-4 bg-red-600 hover:bg-red-700"
+      >
+        {testing ? 'Probando...' : 'Testear Conexión Firebase'}
+      </Button>
+      
+      {logs.length > 0 && (
+        <div className="bg-zinc-950 p-3 rounded font-mono text-xs max-h-60 overflow-y-auto">
+          {logs.map((log, i) => (
+            <div key={i} className={log.includes('❌') ? 'text-red-400' : log.includes('✅') ? 'text-green-400' : 'text-zinc-400'}>
+              {log}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const API_URL = import.meta.env.VITE_LEDGER_API_URL || 'http://localhost:3001';
 
@@ -352,6 +422,19 @@ export function Landing() {
             Empezar Gratis
             <ArrowRight className="w-5 h-5 ml-2" />
           </Button>
+        </div>
+      </section>
+
+      {/* Debug Section */}
+      <section className="py-12 bg-red-950/20 border-y border-red-800/50">
+        <div className="max-w-4xl mx-auto px-6 lg:px-12">
+          <h3 className="text-xl font-bold text-red-400 mb-4 flex items-center gap-2">
+            ⚠️ Diagnóstico de Firebase
+          </h3>
+          <p className="text-zinc-400 mb-4">
+            Si tienes problemas para iniciar sesión, haz clic aquí para diagnosticar:
+          </p>
+          <FirebaseDebug />
         </div>
       </section>
 
