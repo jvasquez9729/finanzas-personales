@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
+import { useFirebaseAuth } from '@/hooks/useFirebaseAuth';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
@@ -87,8 +88,6 @@ function FirebaseDebug() {
   );
 }
 
-const API_URL = import.meta.env.VITE_LEDGER_API_URL || 'http://localhost:3001';
-
 interface Feature {
   icon: React.ReactNode;
   title: string;
@@ -130,48 +129,43 @@ const features: Feature[] = [
 
 export function Landing() {
   const navigate = useNavigate();
+  const { signIn, signUp, loading, error: authError, clearError } = useFirebaseAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
+    name: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
+    clearError();
 
     try {
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+      let result;
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Error al iniciar sesión');
+      if (isLogin) {
+        // Iniciar sesión
+        result = await signIn(formData.email, formData.password);
+      } else {
+        // Registrarse
+        if (!formData.name) {
+          setError('Por favor ingresa tu nombre');
+          return;
+        }
+        result = await signUp(formData.email, formData.password, formData.name);
       }
 
-      // Guardar token y datos del usuario
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      localStorage.setItem('households', JSON.stringify(data.households));
-      
-      if (data.households?.length > 0) {
-        localStorage.setItem('householdId', data.households[0].id);
+      if (result.success) {
+        navigate('/dashboard');
+      } else {
+        setError(result.error || 'Error al procesar la solicitud');
       }
-
-      // Redirigir al dashboard
-      navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error de conexión');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -282,9 +276,25 @@ export function Landing() {
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSubmit} className="space-y-4">
-                    {error && (
+                    {(error || authError) && (
                       <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm animate-shake">
-                        {error}
+                        {error || authError}
+                      </div>
+                    )}
+
+                    {!isLogin && (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-zinc-300">
+                          Nombre completo
+                        </label>
+                        <Input
+                          type="text"
+                          placeholder="Juan Pérez"
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-emerald-500"
+                          required={!isLogin}
+                        />
                       </div>
                     )}
 
@@ -369,6 +379,7 @@ export function Landing() {
                         onClick={() => {
                           setIsLogin(!isLogin);
                           setError('');
+                          clearError();
                         }}
                         className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
                       >
