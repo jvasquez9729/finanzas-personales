@@ -1,7 +1,11 @@
 {
   "version": 2,
   "routes": [
-    { "handle": "filesystem" },
+    { "src": "/debug", "dest": "/index.html" },
+    { "src": "/login", "dest": "/index.html" },
+    { "src": "/register", "dest": "/index.html" },
+    { "src": "/dashboard", "dest": "/index.html" },
+    { "src": "/dashboard/(.*)", "dest": "/index.html" },
     { "src": "/(.*)", "dest": "/index.html" }
   ],
   "buildCommand": "npm run build",
