@@ -136,19 +136,49 @@ export function useFirestoreTransactions(userId: string | null) {
 
   // Calcular estadísticas
   const stats = (() => {
-    const income = transactions
+    // Calcular ingresos
+    const allIncome = transactions
       .filter(t => t.type.includes('income'))
       .reduce((sum, t) => sum + t.amount, 0);
-    
-    const expenses = transactions
+
+    const fixedIncome = transactions
+      .filter(t => t.type === 'fixed-income')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const variableIncome = transactions
+      .filter(t => t.type === 'variable-income')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    // Calcular gastos
+    const allExpenses = transactions
       .filter(t => t.type.includes('expense'))
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
+    const fixedExpenses = transactions
+      .filter(t => t.type === 'fixed-expense')
+      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+    const variableExpenses = transactions
+      .filter(t => t.type === 'variable-expense')
+      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+    // Calcular ahorros e inversiones (por ahora 0, se pueden agregar después)
+    const savings = 0;
+    const investments = 0;
+
+    const balance = allIncome - allExpenses;
+
     return {
-      totalIncome: income,
-      totalExpenses: expenses,
-      balance: income - expenses,
-      savingsRate: income > 0 ? ((income - expenses) / income) * 100 : 0,
+      monthlyIncome: allIncome,
+      monthlyExpenses: allExpenses,
+      fixedExpenses,
+      variableExpenses,
+      fixedIncome,
+      variableIncome,
+      savings,
+      investments,
+      balance,
+      savingsRate: allIncome > 0 ? ((balance) / allIncome) * 100 : 0,
     };
   })();
 
