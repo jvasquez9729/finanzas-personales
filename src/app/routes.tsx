@@ -12,7 +12,7 @@ import { Budgets } from '@/app/pages/Budgets';
 import { Calendar } from '@/app/pages/Calendar';
 import { Analysis } from '@/app/pages/Analysis';
 import { Settings } from '@/app/pages/Settings';
-import { Debug } from '@/app/pages/Debug';
+import { SimpleDebug } from '@/app/pages/SimpleDebug';
 
 // Componente wrapper para proteger rutas
 function ProtectedRoute() {
@@ -63,7 +63,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/debug',
-    element: <Debug />,
+    element: <SimpleDebug />,
   },
   {
     element: <ProtectedRoute />,
