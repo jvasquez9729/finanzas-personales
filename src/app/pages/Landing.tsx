@@ -202,7 +202,15 @@ export function Landing() {
           </Button>
         </nav>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 pt-20 pb-32 lg:px-12">
+        {/* DEBUG SECTION - VISIBLE INMEDIATAMENTE */}
+        <div className="relative z-10 max-w-4xl mx-auto px-6 py-8">
+          <div className="bg-red-900/30 border border-red-700 rounded-lg p-6">
+            <h2 className="text-xl font-bold text-red-400 mb-4">⚠️ Diagnóstico Firebase</h2>
+            <FirebaseDebug />
+          </div>
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-6 pt-10 pb-32 lg:px-12">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left: Hero Text */}
             <div className="space-y-8 animate-fade-in">
@@ -422,19 +430,6 @@ export function Landing() {
             Empezar Gratis
             <ArrowRight className="w-5 h-5 ml-2" />
           </Button>
-        </div>
-      </section>
-
-      {/* Debug Section */}
-      <section className="py-12 bg-red-950/20 border-y border-red-800/50">
-        <div className="max-w-4xl mx-auto px-6 lg:px-12">
-          <h3 className="text-xl font-bold text-red-400 mb-4 flex items-center gap-2">
-            ⚠️ Diagnóstico de Firebase
-          </h3>
-          <p className="text-zinc-400 mb-4">
-            Si tienes problemas para iniciar sesión, haz clic aquí para diagnosticar:
-          </p>
-          <FirebaseDebug />
         </div>
       </section>
 
