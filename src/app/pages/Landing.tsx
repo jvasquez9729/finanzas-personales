@@ -127,6 +127,7 @@ const features: Feature[] = [
   },
 ];
 
+// Autenticación con Firebase - v2
 export function Landing() {
   const navigate = useNavigate();
   const { signIn, signUp, loading, error: authError, clearError } = useFirebaseAuth();
