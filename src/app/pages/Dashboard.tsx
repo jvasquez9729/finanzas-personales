@@ -66,12 +66,12 @@ export function Dashboard() {
 
   // Datos para gráfica mensual (simulados por ahora)
   const monthlyData = [
-    { month: 'Ene', income: stats.monthlyIncome * 0.9, expenses: stats.monthlyExpenses * 0.95 },
-    { month: 'Feb', income: stats.monthlyIncome * 0.95, expenses: stats.monthlyExpenses * 0.9 },
-    { month: 'Mar', income: stats.monthlyIncome * 1.0, expenses: stats.monthlyExpenses * 1.05 },
-    { month: 'Abr', income: stats.monthlyIncome * 1.02, expenses: stats.monthlyExpenses * 0.98 },
-    { month: 'May', income: stats.monthlyIncome * 1.05, expenses: stats.monthlyExpenses * 1.02 },
-    { month: 'Jun', income: stats.monthlyIncome, expenses: stats.monthlyExpenses },
+    { month: 'Ene', income: (stats?.monthlyIncome || 0) * 0.9, expenses: (stats?.monthlyExpenses || 0) * 0.95 },
+    { month: 'Feb', income: (stats?.monthlyIncome || 0) * 0.95, expenses: (stats?.monthlyExpenses || 0) * 0.9 },
+    { month: 'Mar', income: (stats?.monthlyIncome || 0) * 1.0, expenses: (stats?.monthlyExpenses || 0) * 1.05 },
+    { month: 'Abr', income: (stats?.monthlyIncome || 0) * 1.02, expenses: (stats?.monthlyExpenses || 0) * 0.98 },
+    { month: 'May', income: (stats?.monthlyIncome || 0) * 1.05, expenses: (stats?.monthlyExpenses || 0) * 1.02 },
+    { month: 'Jun', income: (stats?.monthlyIncome || 0), expenses: (stats?.monthlyExpenses || 0) },
   ];
 
   // Transacciones recientes
@@ -80,8 +80,8 @@ export function Dashboard() {
     .slice(0, 5);
 
   // Calcular métricas
-  const cashFlow = stats.monthlyIncome - stats.monthlyExpenses;
-  const netWorth = savingsGoals.reduce((sum, g) => sum + g.currentAmount, 0) + 
+  const cashFlow = (stats?.monthlyIncome || 0) - (stats?.monthlyExpenses || 0);
+  const netWorth = savingsGoals.reduce((sum, g) => sum + g.currentAmount, 0) +
                    investments.reduce((sum, i) => sum + i.currentValue, 0);
 
   return (
@@ -141,42 +141,42 @@ export function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <MetricCard
             title="Balance Mensual"
-            value={`$${stats.balance.toLocaleString()}`}
-            change={stats.balance > 0 ? 5.2 : -2.1}
-            trend={stats.balance >= 0 ? 'up' : 'down'}
+            value={`$${(stats?.balance || 0).toLocaleString()}`}
+            change={(stats?.balance || 0) > 0 ? 5.2 : -2.1}
+            trend={(stats?.balance || 0) >= 0 ? 'up' : 'down'}
             subtitle="Ingresos - Gastos"
             icon={<Wallet className="w-5 h-5" />}
-            accentColor={stats.balance >= 0 ? 'emerald' : 'red'}
+            accentColor={(stats?.balance || 0) >= 0 ? 'emerald' : 'red'}
           />
 
           <MetricCard
             title="Ingresos"
-            value={`$${stats.monthlyIncome.toLocaleString()}`}
+            value={`$${(stats?.monthlyIncome || 0).toLocaleString()}`}
             change={3.5}
             trend="up"
-            subtitle={`Fijos: $${stats.fixedIncome.toLocaleString()}`}
+            subtitle={`Fijos: $${(stats?.fixedIncome || 0).toLocaleString()}`}
             icon={<TrendingUp className="w-5 h-5" />}
             accentColor="emerald"
           />
 
           <MetricCard
             title="Gastos"
-            value={`$${stats.monthlyExpenses.toLocaleString()}`}
+            value={`$${(stats?.monthlyExpenses || 0).toLocaleString()}`}
             change={-1.2}
             trend="down"
-            subtitle={`Fijos: $${stats.fixedExpenses.toLocaleString()}`}
+            subtitle={`Fijos: $${(stats?.fixedExpenses || 0).toLocaleString()}`}
             icon={<TrendingDown className="w-5 h-5" />}
             accentColor="red"
           />
 
           <MetricCard
             title="Tasa de Ahorro"
-            value={`${stats.savingsRate.toFixed(1)}%`}
-            change={stats.savingsRate > 20 ? 2.3 : -0.5}
-            trend={stats.savingsRate > 0 ? 'up' : 'down'}
+            value={`${(stats?.savingsRate || 0).toFixed(1)}%`}
+            change={(stats?.savingsRate || 0) > 20 ? 2.3 : -0.5}
+            trend={(stats?.savingsRate || 0) > 0 ? 'up' : 'down'}
             subtitle="Meta: 20%"
             icon={<PiggyBank className="w-5 h-5" />}
-            accentColor={stats.savingsRate >= 20 ? 'emerald' : 'amber'}
+            accentColor={(stats?.savingsRate || 0) >= 20 ? 'emerald' : 'amber'}
           />
         </div>
 
