@@ -1,14 +1,11 @@
 import { Hono } from "hono";
 import bcrypt from "bcrypt";
-import { SignJWT } from "jose";
+import { SignJWT, jwtVerify } from "jose";
 import { pool } from "./db.js";
+import { config } from "./config.js";
+import { loginSchema, formatZodErrors } from "./validators.js";
 
 const auth = new Hono();
-
-interface LoginBody {
-  email: string;
-  password: string;
-}
 
 interface UserRow {
   id: string;
@@ -18,13 +15,29 @@ interface UserRow {
   status: string;
 }
 
-auth.post("/login", async (c) => {
-  const body = (await c.req.json()) as LoginBody;
-  const { email, password } = body;
+// Seguridad: número de rondas para bcrypt
+const SALT_ROUNDS = 12;
 
-  if (!email || !password) {
-    return c.json({ error: "email and password required" }, 400);
+auth.post("/login", async (c) => {
+  const requestId = c.get("requestId") as string;
+  
+  // Validar body con Zod
+  const body = await c.req.json();
+  const validation = loginSchema.safeParse(body);
+
+  if (!validation.success) {
+    return c.json(
+      {
+        error: "validation_error",
+        message: "Datos de entrada inválidos",
+        details: formatZodErrors(validation.error),
+        requestId,
+      },
+      400
+    );
   }
+
+  const { email, password } = validation.data;
 
   const client = await pool.connect();
   try {
@@ -34,22 +47,52 @@ auth.post("/login", async (c) => {
     );
 
     if (res.rows.length === 0) {
-      return c.json({ error: "invalid_credentials", message: "Email o contraseña incorrectos" }, 401);
+      // Tiempo constante para prevenir timing attacks
+      await bcrypt.hash(password, SALT_ROUNDS);
+      return c.json(
+        {
+          error: "invalid_credentials",
+          message: "Email o contraseña incorrectos",
+          requestId,
+        },
+        401
+      );
     }
 
     const user = res.rows[0];
 
     if (user.status !== "active") {
-      return c.json({ error: "user_inactive", message: "Usuario inactivo" }, 403);
+      return c.json(
+        {
+          error: "user_inactive",
+          message: "Usuario inactivo",
+          requestId,
+        },
+        403
+      );
     }
 
     if (!user.password_hash) {
-      return c.json({ error: "no_password", message: "Usuario sin contraseña configurada" }, 401);
+      return c.json(
+        {
+          error: "no_password",
+          message: "Usuario sin contraseña configurada",
+          requestId,
+        },
+        401
+      );
     }
 
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
-      return c.json({ error: "invalid_credentials", message: "Email o contraseña incorrectos" }, 401);
+      return c.json(
+        {
+          error: "invalid_credentials",
+          message: "Email o contraseña incorrectos",
+          requestId,
+        },
+        401
+      );
     }
 
     // Obtener hogares del usuario
@@ -61,15 +104,15 @@ auth.post("/login", async (c) => {
       [user.id]
     );
 
-    const households = householdsRes.rows as Array<{ id: string; name: string; role: string }>;
+    const households = householdsRes.rows as Array<{
+      id: string;
+      name: string;
+      role: string;
+    }>;
 
-    // Generar JWT
-    const secret = process.env.JWT_SECRET ?? process.env.SUPABASE_JWT_SECRET;
-    if (!secret) {
-      return c.json({ error: "internal_error", message: "JWT secret not configured" }, 500);
-    }
-
-    const secretKey = new TextEncoder().encode(secret);
+    // Generar JWT con claims estándar
+    const secretKey = new TextEncoder().encode(config.JWT_SECRET);
+    
     const token = await new SignJWT({
       sub: user.id,
       email: user.email,
@@ -77,11 +120,17 @@ auth.post("/login", async (c) => {
     })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
-      .setExpirationTime("7d")
+      .setExpirationTime("24h") // Reducido de 7 días a 24 horas
+      .setIssuer("finanzas-api")
+      .setAudience("finanzas-web")
       .sign(secretKey);
+
+    // Log de login exitoso (para auditoría)
+    console.log(`[SECURITY] Login exitoso - userId: ${user.id}, email: ${user.email}, requestId: ${requestId}`);
 
     return c.json({
       token,
+      expiresIn: 86400, // 24 horas en segundos
       user: {
         id: user.id,
         name: user.name,
@@ -89,6 +138,16 @@ auth.post("/login", async (c) => {
       },
       households,
     });
+  } catch (error) {
+    console.error(`[SECURITY] Error en login: ${error}, requestId: ${requestId}`);
+    return c.json(
+      {
+        error: "internal_error",
+        message: "Error interno del servidor",
+        requestId,
+      },
+      500
+    );
   } finally {
     client.release();
   }
@@ -96,22 +155,29 @@ auth.post("/login", async (c) => {
 
 // Endpoint para verificar token y obtener info del usuario
 auth.get("/me", async (c) => {
+  const requestId = c.get("requestId") as string;
   const authHeader = c.req.header("Authorization");
-  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
+  const token = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7).trim()
+    : null;
 
   if (!token) {
-    return c.json({ error: "unauthorized" }, 401);
-  }
-
-  const secret = process.env.JWT_SECRET ?? process.env.SUPABASE_JWT_SECRET;
-  if (!secret) {
-    return c.json({ error: "internal_error" }, 500);
+    return c.json(
+      {
+        error: "unauthorized",
+        message: "Token no proporcionado",
+        requestId,
+      },
+      401
+    );
   }
 
   try {
-    const { jwtVerify } = await import("jose");
-    const secretKey = new TextEncoder().encode(secret);
-    const { payload } = await jwtVerify(token, secretKey);
+    const secretKey = new TextEncoder().encode(config.JWT_SECRET);
+    const { payload } = await jwtVerify(token, secretKey, {
+      issuer: "finanzas-api",
+      audience: "finanzas-web",
+    });
 
     const userId = payload.sub as string;
     const client = await pool.connect();
@@ -122,10 +188,28 @@ auth.get("/me", async (c) => {
       );
 
       if (userRes.rows.length === 0) {
-        return c.json({ error: "user_not_found" }, 404);
+        return c.json(
+          {
+            error: "user_not_found",
+            message: "Usuario no encontrado",
+            requestId,
+          },
+          404
+        );
       }
 
       const user = userRes.rows[0];
+
+      if (user.status !== "active") {
+        return c.json(
+          {
+            error: "user_inactive",
+            message: "Usuario inactivo",
+            requestId,
+          },
+          403
+        );
+      }
 
       const householdsRes = await client.query(
         `SELECT h.id, h.name, hm.role 
@@ -146,8 +230,16 @@ auth.get("/me", async (c) => {
     } finally {
       client.release();
     }
-  } catch {
-    return c.json({ error: "invalid_token" }, 401);
+  } catch (error) {
+    console.error(`[SECURITY] Token inválido: ${error}, requestId: ${requestId}`);
+    return c.json(
+      {
+        error: "invalid_token",
+        message: "Token inválido o expirado",
+        requestId,
+      },
+      401
+    );
   }
 });
 

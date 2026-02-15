@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
 import {
   BarChart,
@@ -19,110 +20,141 @@ import {
 import { TrendingUp, Users, AlertCircle } from 'lucide-react';
 
 export function Analysis() {
-  const { financialData, users } = useFinance();
+  const { financialData, users, stats } = useFinance();
 
-  const efficiency = {
-    userA:
-      financialData.userA.monthlyIncome > 0
-        ? (financialData.userA.monthlyExpenses / financialData.userA.monthlyIncome) * 100
-        : 0,
-    userB:
-      financialData.userB.monthlyIncome > 0
-        ? (financialData.userB.monthlyExpenses / financialData.userB.monthlyIncome) * 100
-        : 0,
-  };
+  // Calcular métricas derivadas de manera segura
+  const efficiency = useMemo(() => {
+    const income = stats.monthlyIncome || 0;
+    const expenses = stats.monthlyExpenses || 0;
+    return income > 0 ? (expenses / income) * 100 : 0;
+  }, [stats.monthlyIncome, stats.monthlyExpenses]);
 
-  // Comparación entre usuarios
-  const comparisonData = [
+  const savingsRate = useMemo(() => {
+    return stats.monthlyIncome > 0 
+      ? ((stats.monthlyIncome - stats.monthlyExpenses) / stats.monthlyIncome) * 100 
+      : 0;
+  }, [stats.monthlyIncome, stats.monthlyExpenses]);
+
+  const runway = useMemo(() => {
+    return stats.monthlyExpenses > 0 
+      ? stats.balance / stats.monthlyExpenses 
+      : 0;
+  }, [stats.balance, stats.monthlyExpenses]);
+
+  // Datos de comparación simplificados
+  const comparisonData = useMemo(() => [
     {
       metric: 'Ingresos',
-      [users.userA]: financialData.userA.monthlyIncome,
-      [users.userB]: financialData.userB.monthlyIncome,
+      value: stats.monthlyIncome,
     },
     {
       metric: 'Gastos',
-      [users.userA]: financialData.userA.monthlyExpenses,
-      [users.userB]: financialData.userB.monthlyExpenses,
+      value: stats.monthlyExpenses,
     },
     {
       metric: 'Ahorro',
-      [users.userA]: financialData.userA.monthlyIncome - financialData.userA.monthlyExpenses,
-      [users.userB]: financialData.userB.monthlyIncome - financialData.userB.monthlyExpenses,
+      value: Math.max(0, stats.monthlyIncome - stats.monthlyExpenses),
     },
     {
-      metric: 'Patrimonio / 10',
-      [users.userA]: financialData.userA.netWorth / 10,
-      [users.userB]: financialData.userB.netWorth / 10,
+      metric: 'Balance',
+      value: stats.balance,
     },
-  ];
+  ], [stats]);
 
-  // Datos de radar para comparación de perfil financiero
-  const radarData = [
+  // Datos de radar para perfil financiero
+  const radarData = useMemo(() => [
     {
       subject: 'Ingresos',
-      [users.userA]: (financialData.userA.monthlyIncome / 50000) * 100,
-      [users.userB]: (financialData.userB.monthlyIncome / 50000) * 100,
+      A: Math.min(100, (stats.monthlyIncome / 50000) * 100),
     },
     {
       subject: 'Ahorro',
-      [users.userA]: financialData.userA.savingsRate,
-      [users.userB]: financialData.userB.savingsRate,
+      A: Math.max(0, savingsRate),
     },
     {
       subject: 'Liquidez',
-      [users.userA]: (financialData.userA.liquidityRunway / 12) * 100,
-      [users.userB]: (financialData.userB.liquidityRunway / 12) * 100,
-    },
-    {
-      subject: 'Estabilidad',
-      [users.userA]: 100 - financialData.userA.expenseVolatility * 5,
-      [users.userB]: 100 - financialData.userB.expenseVolatility * 5,
+      A: Math.min(100, (runway / 12) * 100),
     },
     {
       subject: 'Control',
-      [users.userA]: 85,
-      [users.userB]: 92,
+      A: Math.max(0, 100 - efficiency),
     },
-  ];
+    {
+      subject: 'Estabilidad',
+      A: 75, // Valor simulado basado en consistencia de gastos
+    },
+  ], [stats, savingsRate, runway, efficiency]);
 
-  // Proyección 6 meses
-  const projectionData = Array.from({ length: 6 }, (_, i) => {
-    const month = new Date(2026, 1 + i, 1).toLocaleDateString('es-ES', { month: 'short' });
-    const baseIncome = financialData.family.monthlyIncome;
-    const baseExpenses = financialData.family.monthlyExpenses;
+  // Generar datos de proyección dinámicamente
+  const projectionData = useMemo(() => {
+    const now = new Date();
+    return Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      const month = d.toLocaleDateString('es-ES', { month: 'short' });
+      const baseIncome = stats.monthlyIncome;
+      const baseExpenses = stats.monthlyExpenses;
+      
+      return {
+        month,
+        actual: i === 0 ? baseIncome - baseExpenses : null,
+        optimista: baseIncome * 1.03 - baseExpenses * 0.95,
+        conservador: baseIncome * 0.97 - baseExpenses * 1.05,
+        proyectado: baseIncome - baseExpenses,
+      };
+    });
+  }, [stats.monthlyIncome, stats.monthlyExpenses]);
+
+  // Insights basados en datos reales
+  const insights = useMemo(() => {
+    const items = [];
     
-    return {
-      month,
-      actual: i === 0 ? baseIncome - baseExpenses : null,
-      optimista: baseIncome * 1.03 - baseExpenses * 0.95,
-      conservador: baseIncome * 0.97 - baseExpenses * 1.05,
-      proyectado: baseIncome - baseExpenses,
-    };
-  });
+    if (savingsRate > 20) {
+      items.push({
+        type: 'success' as const,
+        title: 'Excelente tasa de ahorro',
+        description: `Con ${savingsRate.toFixed(1)}% de tasa de ahorro, estás por encima del promedio recomendado del 20%.`,
+      });
+    } else if (savingsRate < 10) {
+      items.push({
+        type: 'warning' as const,
+        title: 'Tasa de ahorro baja',
+        description: `Tu tasa de ahorro es del ${savingsRate.toFixed(1)}%. Intenta reducir gastos para llegar al 20% recomendado.`,
+      });
+    }
 
-  // Insights y recomendaciones
-  const insights = [
-    {
-      type: 'success',
-      title: 'Excelente tasa de ahorro familiar',
-      description: `Con ${financialData.family.savingsRate.toFixed(1)}% de tasa de ahorro, están por encima del promedio nacional.`,
-    },
-    {
-      type: 'warning',
-      title: 'Volatilidad en gastos de entretenimiento',
-      description: 'Se detectó variación del 15% en esta categoría. Considera establecer un límite fijo.',
-    },
-    {
-      type: 'info',
-      title: 'Oportunidad de optimización',
-      description: 'Al reducir gastos en 5%, podrían alcanzar la meta de vacaciones 2 meses antes.',
-    },
-    {
-      type: 'success',
-      title: 'Distribución de aportes equilibrada',
-      description: 'Las contribuciones individuales están balanceadas según los ingresos de cada uno.',
-    },
-  ];
+    if (runway < 3) {
+      items.push({
+        type: 'warning' as const,
+        title: 'Reserva de emergencia baja',
+        description: `Tienes ${runway.toFixed(1)} meses de gastos cubiertos. Se recomienda tener al menos 6 meses.`,
+      });
+    } else if (runway > 6) {
+      items.push({
+        type: 'success' as const,
+        title: 'Buena reserva de emergencia',
+        description: `Tienes ${runway.toFixed(1)} meses de gastos cubiertos.`,
+      });
+    }
+
+    if (efficiency > 90) {
+      items.push({
+        type: 'info' as const,
+        title: 'Alto ratio gastos/ingresos',
+        description: 'Estás gastando más del 90% de tus ingresos. Busca áreas para reducir gastos.',
+      });
+    }
+
+    // Si no hay insights, agregar uno genérico
+    if (items.length === 0) {
+      items.push({
+        type: 'info' as const,
+        title: 'Sigue registrando tus transacciones',
+        description: 'Con más datos podremos darte mejores recomendaciones personalizadas.',
+      });
+    }
+
+    return items;
+  }, [savingsRate, runway, efficiency]);
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -178,7 +210,7 @@ export function Analysis() {
           {/* Bar Comparison */}
           <div className="p-6 rounded-lg border border-zinc-800 bg-zinc-900">
             <h3 className="text-lg font-semibold text-zinc-100 mb-4">
-              Comparación Individual
+              Resumen Financiero
             </h3>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={comparisonData}>
@@ -193,9 +225,7 @@ export function Analysis() {
                   }}
                   formatter={(value: number) => `$${value.toLocaleString()}`}
                 />
-                <Legend />
-                <Bar dataKey={users.userA} fill="#3b82f6" />
-                <Bar dataKey={users.userB} fill="#10b981" />
+                <Bar dataKey="value" fill="#3b82f6" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -203,7 +233,7 @@ export function Analysis() {
           {/* Radar Chart */}
           <div className="p-6 rounded-lg border border-zinc-800 bg-zinc-900">
             <h3 className="text-lg font-semibold text-zinc-100 mb-4">
-              Perfil Financiero Comparado
+              Perfil Financiero
             </h3>
             <ResponsiveContainer width="100%" height={300}>
               <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
@@ -211,17 +241,10 @@ export function Analysis() {
                 <PolarAngleAxis dataKey="subject" stroke="#71717a" style={{ fontSize: '12px' }} />
                 <PolarRadiusAxis stroke="#71717a" />
                 <Radar
-                  name={users.userA}
-                  dataKey={users.userA}
+                  name="Tu Perfil"
+                  dataKey="A"
                   stroke="#3b82f6"
                   fill="#3b82f6"
-                  fillOpacity={0.3}
-                />
-                <Radar
-                  name={users.userB}
-                  dataKey={users.userB}
-                  stroke="#10b981"
-                  fill="#10b981"
                   fillOpacity={0.3}
                 />
                 <Legend />
@@ -289,40 +312,25 @@ export function Analysis() {
           </ResponsiveContainer>
         </div>
 
-        {/* Detailed Comparison */}
+        {/* Detailed Stats */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="p-6 rounded-lg border border-zinc-800 bg-zinc-900">
             <h3 className="text-lg font-semibold text-zinc-100 mb-4">Eficiencia del Gasto</h3>
             <div className="space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-zinc-400">{users.userA}</span>
+                  <span className="text-sm text-zinc-400">Ratio Gastos/Ingresos</span>
                   <span className="text-sm font-semibold text-blue-500">
-                    {efficiency.userA.toFixed(1)}%
+                    {efficiency.toFixed(1)}%
                   </span>
                 </div>
                 <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-blue-600 rounded-full"
+                    className={`h-full rounded-full ${
+                      efficiency > 90 ? 'bg-red-600' : efficiency > 70 ? 'bg-amber-600' : 'bg-emerald-600'
+                    }`}
                     style={{
-                      width: `${efficiency.userA}%`,
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-zinc-400">{users.userB}</span>
-                  <span className="text-sm font-semibold text-emerald-500">
-                    {efficiency.userB.toFixed(1)}%
-                  </span>
-                </div>
-                <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-emerald-600 rounded-full"
-                    style={{
-                      width: `${efficiency.userB}%`,
+                      width: `${Math.min(100, efficiency)}%`,
                     }}
                   />
                 </div>
@@ -330,7 +338,11 @@ export function Analysis() {
 
               <div className="pt-3 border-t border-zinc-800">
                 <p className="text-xs text-zinc-500">
-                  Menor porcentaje indica mejor eficiencia en el manejo de recursos
+                  {efficiency > 90 
+                    ? '⚠️ Estás gastando más del 90% de tus ingresos'
+                    : efficiency > 70
+                    ? '✓ Buen control de gastos'
+                    : '⭐ Excelente gestión financiera'}
                 </p>
               </div>
             </div>
@@ -339,53 +351,41 @@ export function Analysis() {
           <div className="p-6 rounded-lg border border-zinc-800 bg-zinc-900">
             <h3 className="text-lg font-semibold text-zinc-100 mb-4">Capacidad de Ahorro</h3>
             <div className="space-y-4">
-              <div className="text-center p-4 rounded-lg bg-blue-600/10">
-                <div className="text-3xl font-bold text-blue-500 mb-1">
-                  {financialData.userA.savingsRate.toFixed(1)}%
-                </div>
-                <div className="text-sm text-zinc-400">{users.userA}</div>
-              </div>
-
               <div className="text-center p-4 rounded-lg bg-emerald-600/10">
                 <div className="text-3xl font-bold text-emerald-500 mb-1">
-                  {financialData.userB.savingsRate.toFixed(1)}%
+                  {savingsRate.toFixed(1)}%
                 </div>
-                <div className="text-sm text-zinc-400">{users.userB}</div>
+                <div className="text-sm text-zinc-400">Tasa de Ahorro</div>
               </div>
 
               <div className="pt-3 border-t border-zinc-800">
                 <p className="text-xs text-zinc-500 text-center">
-                  {financialData.userB.savingsRate > financialData.userA.savingsRate
-                    ? `${users.userB} ahorra ${(financialData.userB.savingsRate - financialData.userA.savingsRate).toFixed(1)}% más`
-                    : `${users.userA} ahorra ${(financialData.userA.savingsRate - financialData.userB.savingsRate).toFixed(1)}% más`}
+                  {savingsRate >= 20 
+                    ? '⭐ Estás ahorrando más del 20% recomendado'
+                    : savingsRate >= 10
+                    ? '✓ Bien, pero intenta llegar al 20%'
+                    : '⚠️ Intenta aumentar tu tasa de ahorro'}
                 </p>
               </div>
             </div>
           </div>
 
           <div className="p-6 rounded-lg border border-zinc-800 bg-zinc-900">
-            <h3 className="text-lg font-semibold text-zinc-100 mb-4">Runway Comparado</h3>
+            <h3 className="text-lg font-semibold text-zinc-100 mb-4">Reserva de Emergencia</h3>
             <div className="space-y-4">
               <div className="p-4 rounded-lg bg-zinc-800/50">
                 <div className="text-2xl font-bold text-zinc-100 mb-1">
-                  {financialData.userA.liquidityRunway.toFixed(1)} meses
+                  {runway.toFixed(1)} meses
                 </div>
-                <div className="text-sm text-zinc-400">{users.userA}</div>
-              </div>
-
-              <div className="p-4 rounded-lg bg-zinc-800/50">
-                <div className="text-2xl font-bold text-zinc-100 mb-1">
-                  {financialData.userB.liquidityRunway.toFixed(1)} meses
-                </div>
-                <div className="text-sm text-zinc-400">{users.userB}</div>
+                <div className="text-sm text-zinc-400">De gastos cubiertos</div>
               </div>
 
               <div className="pt-3 border-t border-zinc-800">
                 <div className="text-center p-3 rounded-lg bg-emerald-600/10">
                   <div className="text-xl font-bold text-emerald-500 mb-1">
-                    {financialData.family.liquidityRunway.toFixed(1)} meses
+                    ${stats.balance.toLocaleString()}
                   </div>
-                  <div className="text-xs text-zinc-400">Runway Familiar</div>
+                  <div className="text-xs text-zinc-400">Balance Total</div>
                 </div>
               </div>
             </div>

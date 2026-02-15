@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { Transaction, FinancialStats } from '@/types/finance';
+import { generateId } from '@/lib/utils';
 
 // Categorías predefinidas
 export const EXPENSE_CATEGORIES = [
@@ -45,8 +46,7 @@ export const INVESTMENT_CATEGORIES = [
   { value: 'forex', label: 'Forex', icon: '💱' },
 ];
 
-// Generar ID único
-const generateId = () => Math.random().toString(36).substr(2, 9);
+
 
 export function useTransactions(initialTransactions: Transaction[] = []) {
   const [transactions, setTransactions] = useState<Transaction[]>(() => {

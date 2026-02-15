@@ -1,8 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { Budget, BudgetAlert, BudgetAlertLevel, BudgetSummary, BudgetComparison } from '@/types/budget';
 import type { Transaction } from '@/types/finance';
-
-const generateId = () => Math.random().toString(36).substr(2, 9);
+import { generateId } from '@/lib/utils';
 
 export function useBudgets(
   initialBudgets: Budget[] = [],
@@ -122,7 +121,7 @@ export function useBudgets(
           const lastMonth = new Date();
           lastMonth.setMonth(lastMonth.getMonth() - 1);
           return t.type.includes('expense') && 
-                 (t.category === b.category || budget.category === 'all') &&
+                 (t.category === b.category || b.category === 'all') &&
                  tDate.getMonth() === lastMonth.getMonth() &&
                  tDate.getFullYear() === lastMonth.getFullYear();
         })

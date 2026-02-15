@@ -45,6 +45,7 @@ export function useFirestoreTransactions(userId: string | null) {
       return;
     }
 
+    let isMounted = true;
     setLoading(true);
     
     // Query: transacciones del usuario + compartidas
@@ -57,6 +58,7 @@ export function useFirestoreTransactions(userId: string | null) {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
+        if (!isMounted) return;
         const data = snapshot.docs.map(doc => ({
           id: doc.id,
           ...convertTimestamps(doc.data()),
@@ -67,13 +69,17 @@ export function useFirestoreTransactions(userId: string | null) {
         setError(null);
       },
       (err) => {
+        if (!isMounted) return;
         console.error('Error listening to transactions:', err);
         setError('Error al cargar transacciones');
         setLoading(false);
       }
     );
 
-    return () => unsubscribe();
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, [userId]);
 
   // Agregar transacción

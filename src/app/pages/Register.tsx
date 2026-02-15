@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { useFirebaseAuth } from '@/hooks/useFirebaseAuth';
 import { Button } from '@/app/components/ui/button';
@@ -6,7 +6,65 @@ import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Alert, AlertDescription } from '@/app/components/ui/alert';
-import { Loader2, Mail, Lock, User } from 'lucide-react';
+import { Progress } from '@/app/components/ui/progress';
+import { Loader2, Mail, Lock, User, Check, X } from 'lucide-react';
+
+interface PasswordValidation {
+  valid: boolean;
+  errors: string[];
+  strength: 'weak' | 'medium' | 'strong';
+  score: number;
+}
+
+function validatePassword(password: string): PasswordValidation {
+  const errors: string[] = [];
+  
+  if (password.length < 8) {
+    errors.push('Mínimo 8 caracteres');
+  }
+  if (password.length > 128) {
+    errors.push('Máximo 128 caracteres');
+  }
+  if (!/[a-z]/.test(password)) {
+    errors.push('Al menos una minúscula');
+  }
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Al menos una mayúscula');
+  }
+  if (!/[0-9]/.test(password)) {
+    errors.push('Al menos un número');
+  }
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    errors.push('Al menos un carácter especial');
+  }
+  
+  // Contraseñas comunes
+  const commonPasswords = ['password123', '12345678', 'qwerty123', 'abc12345', 'password1'];
+  if (commonPasswords.includes(password.toLowerCase())) {
+    errors.push('Contraseña demasiado común');
+  }
+  
+  // Calcular fuerza
+  let score = 0;
+  if (password.length >= 8) score += 20;
+  if (password.length >= 12) score += 10;
+  if (/[a-z]/.test(password)) score += 15;
+  if (/[A-Z]/.test(password)) score += 15;
+  if (/[0-9]/.test(password)) score += 15;
+  if (/[^a-zA-Z0-9]/.test(password)) score += 15;
+  if (password.length >= 16) score += 10;
+  
+  let strength: 'weak' | 'medium' | 'strong' = 'weak';
+  if (score >= 80) strength = 'strong';
+  else if (score >= 50) strength = 'medium';
+  
+  return {
+    valid: errors.length === 0,
+    errors,
+    strength,
+    score,
+  };
+}
 
 export function Register() {
   const navigate = useNavigate();
@@ -20,6 +78,27 @@ export function Register() {
   });
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
+  const passwordValidation = useMemo(() => 
+    validatePassword(formData.password),
+    [formData.password]
+  );
+
+  const getStrengthColor = (strength: string) => {
+    switch (strength) {
+      case 'strong': return 'bg-emerald-500';
+      case 'medium': return 'bg-amber-500';
+      default: return 'bg-red-500';
+    }
+  };
+
+  const getStrengthLabel = (strength: string) => {
+    switch (strength) {
+      case 'strong': return 'Fuerte';
+      case 'medium': return 'Media';
+      default: return 'Débil';
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
@@ -31,8 +110,8 @@ export function Register() {
       return;
     }
 
-    if (formData.password.length < 6) {
-      setPasswordError('La contraseña debe tener al menos 6 caracteres');
+    if (!passwordValidation.valid) {
+      setPasswordError(passwordValidation.errors[0]);
       return;
     }
 
@@ -76,6 +155,8 @@ export function Register() {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="bg-zinc-800 border-zinc-700 pl-10 text-zinc-100"
                   required
+                  minLength={2}
+                  maxLength={100}
                 />
               </div>
             </div>
@@ -92,6 +173,7 @@ export function Register() {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="bg-zinc-800 border-zinc-700 pl-10 text-zinc-100"
                   required
+                  maxLength={255}
                 />
               </div>
             </div>
@@ -108,8 +190,40 @@ export function Register() {
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="bg-zinc-800 border-zinc-700 pl-10 text-zinc-100"
                   required
+                  minLength={8}
+                  maxLength={128}
                 />
               </div>
+              
+              {/* Indicador de fuerza de contraseña */}
+              {formData.password && (
+                <div className="space-y-2 mt-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-zinc-400">Fuerza: {getStrengthLabel(passwordValidation.strength)}</span>
+                    <span className={passwordValidation.valid ? 'text-emerald-400' : 'text-amber-400'}>
+                      {passwordValidation.valid ? (
+                        <span className="flex items-center gap-1"><Check className="w-3 h-3" /> Válida</span>
+                      ) : (
+                        <span className="flex items-center gap-1"><X className="w-3 h-3" /> Inválida</span>
+                      )}
+                    </span>
+                  </div>
+                  <Progress 
+                    value={passwordValidation.score} 
+                    className="h-1 bg-zinc-700"
+                  />
+                  <div className="text-xs text-zinc-500 space-y-1">
+                    <p>Requisitos:</p>
+                    <ul className="space-y-0.5 pl-4">
+                      <li className={formData.password.length >= 8 ? 'text-emerald-400' : ''}>• Mínimo 8 caracteres</li>
+                      <li className={/[a-z]/.test(formData.password) ? 'text-emerald-400' : ''}>• Una minúscula</li>
+                      <li className={/[A-Z]/.test(formData.password) ? 'text-emerald-400' : ''}>• Una mayúscula</li>
+                      <li className={/[0-9]/.test(formData.password) ? 'text-emerald-400' : ''}>• Un número</li>
+                      <li className={/[^a-zA-Z0-9]/.test(formData.password) ? 'text-emerald-400' : ''}>• Un carácter especial</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -126,12 +240,15 @@ export function Register() {
                   required
                 />
               </div>
+              {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                <p className="text-xs text-red-400">Las contraseñas no coinciden</p>
+              )}
             </div>
 
             <Button
               type="submit"
               className="w-full bg-blue-600 hover:bg-blue-700"
-              disabled={loading}
+              disabled={loading || !passwordValidation.valid || formData.password !== formData.confirmPassword}
             >
               {loading ? (
                 <>
